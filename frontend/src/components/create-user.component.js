@@ -1,86 +1,86 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
 
-export default class CreateUser extends Component {
-  constructor(props) {
-    super(props);
+export default function CreateUser() {
+  const BASE_URL = useMemo(() => process.env.REACT_APP_API_URL ?? 'http://localhost:5000', []);
 
-    this.onChangeUsername = this.onChangeUsername.bind(this);
-    this.onSubmit = this.onSubmit.bind(this);
-    this.deleteUser = this.deleteUser.bind(this);
+  const [username, setUsername] = useState('');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
-    this.state = {
-      username: '',
-      users: []
+  const fetchUsers = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${BASE_URL}/users`);
+      setUsers(data);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load users');
+    } finally {
+      setLoading(false);
     }
-  }
+  }, [BASE_URL]);
 
-  componentDidMount() {
-    this.fetchUsers();
-  }
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
-  fetchUsers() {
-  axios.get(`${process.env.REACT_APP_API_URL}/users`)
-      .then(response => {
-        this.setState({ users: response.data });
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
-
-  onChangeUsername(e) {
-    this.setState({
-      username: e.target.value
-    })
-  }
-
-  onSubmit(e) {
+  const onSubmit = useCallback(async (e) => {
     e.preventDefault();
-
-    const user = {
-      username: this.state.username
+    if (!username.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await axios.post(`${BASE_URL}/users/add`, { username });
+      setUsername('');
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      setError('Failed to create user');
+    } finally {
+      setSubmitting(false);
     }
+  }, [username, BASE_URL, fetchUsers]);
 
-  axios.post(`${process.env.REACT_APP_API_URL}/users/add`, user)
-      .then(res => {
-        console.log(res.data);
-        this.setState({ username: '' });
-        this.fetchUsers();
-      });
-  }
+  const deleteUser = useCallback(async (id) => {
+    try {
+      await axios.delete(`${BASE_URL}/users/${id}`);
+      setUsers(prev => prev.filter(u => u.id !== id));
+    } catch (err) {
+      console.error(err);
+      setError('Failed to delete user');
+    }
+  }, [BASE_URL]);
 
-  deleteUser(id) {
-  axios.delete(`${process.env.REACT_APP_API_URL}/users/${id}`)
-      .then(res => {
-        console.log(res.data);
-        this.setState({
-          users: this.state.users.filter(user => user.id !== id)
-        });
-      });
-  }
+  return (
+    <div>
+      <h3>Create New User</h3>
+      {error && <div className="alert alert-danger" role="alert">{error}</div>}
+      <form onSubmit={onSubmit}>
+        <div className="form-group">
+          <label>Username: </label>
+          <input
+            type="text"
+            required
+            className="form-control"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={submitting}
+          />
+        </div>
+        <div className="form-group">
+          <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting ? 'Creating...' : 'Create User'}
+          </button>
+        </div>
+      </form>
 
-  render() {
-    return (
-      <div>
-        <h3>Create New User</h3>
-        <form onSubmit={this.onSubmit}>
-          <div className="form-group"> 
-            <label>Username: </label>
-            <input  type="text"
-                required
-                className="form-control"
-                value={this.state.username}
-                onChange={this.onChangeUsername}
-                />
-          </div>
-          <div className="form-group">
-            <input type="submit" value="Create User" className="btn btn-primary" />
-          </div>
-        </form>
-
-        <div className="mt-4">
-          <h3>Users List</h3>
+      <div className="mt-4">
+        <h3>Users List</h3>
+        {loading ? (
+          <div>Loading users...</div>
+        ) : (
           <table className="table">
             <thead>
               <tr>
@@ -89,21 +89,29 @@ export default class CreateUser extends Component {
               </tr>
             </thead>
             <tbody>
-              {this.state.users.map(user => (
+              {users.map(user => (
                 <tr key={user.id}>
                   <td>{user.username}</td>
                   <td>
-                    <button onClick={() => this.deleteUser(user.id)} 
-                            className="btn btn-danger btn-sm">
+                    <button
+                      onClick={() => deleteUser(user.id)}
+                      className="btn btn-danger btn-sm"
+                      type="button"
+                    >
                       Delete
                     </button>
                   </td>
                 </tr>
               ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="text-center text-muted">No users found</td>
+                </tr>
+              )}
             </tbody>
           </table>
-        </div>
+        )}
       </div>
-    )
-  }
+    </div>
+  );
 }

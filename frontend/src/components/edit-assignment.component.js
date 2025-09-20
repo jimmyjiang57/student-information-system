@@ -1,147 +1,135 @@
-import React, { Component } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import { useParams, useNavigate } from 'react-router-dom';
 
-export default class EditAssignment extends Component {
-  constructor(props) {
-    super(props);
+export default function EditAssignment() {
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-    this.onChangeUsername = this.onChangeUsername.bind(this);
-    this.onChangeDescription = this.onChangeDescription.bind(this);
-    this.onChangeScore = this.onChangeScore.bind(this);
-    this.onChangeDate = this.onChangeDate.bind(this);
-    this.onSubmit = this.onSubmit.bind(this);
+  const BASE_URL = useMemo(
+    () => process.env.REACT_APP_API_URL ?? 'http://localhost:5000',
+    []
+  );
 
-    this.state = {
-      username: '',
-      description: '',
-      score: 0,
-      date: new Date(),
-      users: []
+  const [users, setUsers] = useState([]);
+  const [username, setUsername] = useState('');
+  const [description, setDescription] = useState('');
+  const [score, setScore] = useState(0);
+  const [date, setDate] = useState(new Date());
+  const [loading, setLoading] = useState(true);
+  const [errMsg, setErrMsg] = useState(null);
+
+  // load assignment + users
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const [assignmentRes, usersRes] = await Promise.all([
+          axios.get(`${BASE_URL}/assignments/${id}`),
+          axios.get(`${BASE_URL}/users`),
+        ]);
+
+        if (cancelled) return;
+
+        const a = assignmentRes.data ?? {};
+        setUsername(a.username ?? '');
+        setDescription(a.description ?? '');
+        setScore(Number(a.score ?? 0));
+        setDate(a.date ? new Date(a.date) : new Date());
+
+        const names = (usersRes.data ?? [])
+          .map(u => u.username)
+          .filter(Boolean);
+        setUsers(names);
+      } catch (e) {
+        console.error(e);
+        setErrMsg('Failed to load assignment or users.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }
 
-  componentDidMount() {
-  axios.get(`${process.env.REACT_APP_API_URL}/assignments/`+this.props.match.params.id)
-      .then(response => {
-        this.setState({
-          username: response.data.username,
-          description: response.data.description,
-          score: response.data.score,
-          date: new Date(response.data.date)
-        })   
-      })
-      .catch(function (error) {
-        console.log(error);
-      })
+    load();
+    return () => { cancelled = true; };
+  }, [BASE_URL, id]);
 
-  axios.get(`${process.env.REACT_APP_API_URL}/users`)
-      .then(response => {
-        if (response.data.length > 0) {
-          this.setState({
-            users: response.data.map(user => user.username),
-          })
-        }
-      })
-      .catch((error) => {
-        console.log(error);
-      })
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        username,
+        description,
+        score: Number(score) || 0,
+        date: date instanceof Date ? date.toISOString() : date,
+      };
+      const res = await axios.put(`${BASE_URL}/assignments/${id}`, payload);
+      console.log(res.data);
+      navigate('/');
+    } catch (err) {
+      console.error(err?.response?.data || err.message);
+      setErrMsg(err?.response?.data || 'Update failed');
+      alert(err?.response?.data || 'Update failed');
+    }
+  };
 
-  }
+  if (loading) return <div>Loading…</div>;
 
-  onChangeUsername(e) {
-    this.setState({
-      username: e.target.value
-    })
-  }
-
-  onChangeDescription(e) {
-    this.setState({
-      description: e.target.value
-    })
-  }
-
-  onChangeScore(e) {
-    this.setState({
-      score: e.target.value
-    })
-  }
-
-  onChangeDate(date) {
-    this.setState({
-      date: date
-    })
-  }
-
-  onSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const assignments = {
-      username: this.state.username,
-      description: this.state.description,
-      score: Number(this.state.score),
-      date: this.state.date,
-    };
-    const res = await axios.put(
-      `${process.env.REACT_APP_API_URL}/assignments/${this.props.match.params.id}`,
-      assignments
-    );
-    console.log(res.data);
-    window.location = '/';
-  } catch (err) {
-    console.error(err?.response?.data || err.message);
-    alert(err?.response?.data || 'Update failed');
-  }
-};
-
-  render() {
-    return (
+  return (
     <div>
       <h3>Edit Assignments Log</h3>
-      <form onSubmit={this.onSubmit}>
-        <div className="form-group"> 
+
+      {errMsg && (
+        <div className="alert alert-danger" role="alert" style={{ marginBottom: 16 }}>
+          {errMsg}
+        </div>
+      )}
+
+      <form onSubmit={onSubmit}>
+        <div className="form-group">
           <label>Username: </label>
-          <select ref="userInput"
-              required
-              className="form-control"
-              value={this.state.username}
-              onChange={this.onChangeUsername}>
-              {
-                this.state.users.map(function(user) {
-                  return <option 
-                    key={user}
-                    value={user}>{user}
-                    </option>;
-                })
-              }
+          <select
+            required
+            className="form-control"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          >
+            {users.map((u) => (
+              <option key={u} value={u}>{u}</option>
+            ))}
           </select>
         </div>
-        <div className="form-group"> 
+
+        <div className="form-group">
           <label>Description: </label>
-          <input  type="text"
-              required
-              className="form-control"
-              value={this.state.description}
-              onChange={this.onChangeDescription}
-              />
+          <input
+            type="text"
+            required
+            className="form-control"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
+
         <div className="form-group">
           <label>Score: </label>
-          <input 
-              type="text" 
-              className="form-control"
-              value={this.state.score}
-              onChange={this.onChangeScore}
-              />
+          <input
+            type="number"
+            className="form-control"
+            value={String(score)}
+            onChange={(e) => setScore(e.target.value)}
+            step="1"
+            min="0"
+            inputMode="numeric"
+          />
         </div>
+
         <div className="form-group">
           <label>Date: </label>
           <div>
-            <DatePicker
-              selected={this.state.date}
-              onChange={this.onChangeDate}
-            />
+            <DatePicker selected={date} onChange={setDate} />
           </div>
         </div>
 
@@ -150,6 +138,5 @@ export default class EditAssignment extends Component {
         </div>
       </form>
     </div>
-    )
-  }
+  );
 }

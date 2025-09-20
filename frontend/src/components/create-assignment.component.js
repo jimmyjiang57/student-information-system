@@ -1,138 +1,115 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
+import 'react-datepicker/dist/react-datepicker.css';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
-export default class CreateAssignment extends Component {
-  constructor(props) {
-    super(props);
+export default function CreateAssignment() {
+  const navigate = useNavigate();
+  const BASE_URL = useMemo(() => process.env.REACT_APP_API_URL ?? 'http://localhost:5000', []);
 
-    this.onChangeUsername = this.onChangeUsername.bind(this);
-    this.onChangeDescription = this.onChangeDescription.bind(this);
-    this.onChangeScore = this.onChangeScore.bind(this);
-    this.onChangeDate = this.onChangeDate.bind(this);
-    this.onSubmit = this.onSubmit.bind(this);
+  const [username, setUsername] = useState('');
+  const [description, setDescription] = useState('');
+  const [score, setScore] = useState('');
+  const [date, setDate] = useState(new Date());
+  const [users, setUsers] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
-    this.state = {
-      username: '',
-      description: '',
-      score: '',
-      date: new Date(),
-      users: []
-    };
-  }
-
-  componentDidMount() {
-    // If you have an API helper for users, you can swap this later.
-    axios
-      .get(`${process.env.REACT_APP_API_URL ?? 'http://localhost:5000'}/users`)
-      .then(response => {
-        if (response.data.length > 0) {
-          this.setState({
-            users: response.data.map(user => user.username),
-            username: response.data[0].username
-          });
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await axios.get(`${BASE_URL}/users`);
+        if (!cancelled && data.length > 0) {
+          setUsers(data.map(u => u.username));
+          setUsername(data[0].username);
         }
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
-
-  onChangeUsername(e) {
-    this.setState({ username: e.target.value });
-  }
-
-  onChangeDescription(e) {
-    this.setState({ description: e.target.value });
-  }
-
-  onChangeScore(e) {
-    this.setState({ score: e.target.value });
-  }
-
-  onChangeDate(date) {
-    this.setState({ date });
-  }
-
-  onSubmit(e) {
-    e.preventDefault();
-
-    const assignments = {
-      username: this.state.username,
-      description: this.state.description,
-      score: Number(this.state.score) || 0,
-      date: this.state.date,
-    };
-
-    axios
-      .post(`${process.env.REACT_APP_API_URL ?? 'http://localhost:5000'}/assignments/add`, assignments)
-      .then(res => {
-        console.log(res.data);
-        window.location = '/';
-      })
-      .catch(err => {
+      } catch (err) {
+        if (!cancelled) setError('Failed to load users');
         console.error(err);
-        // You could show an inline error here if you prefer not to redirect on failure
-      });
-  }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [BASE_URL]);
 
-  render() {
-    const { users, username, description, score, date } = this.state;
+  const onSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const assignment = {
+        username,
+        description,
+        score: Number(score) || 0,
+        date,
+      };
+      await axios.post(`${BASE_URL}/assignments/add`, assignment);
+      navigate('/');
+    } catch (err) {
+      console.error(err);
+      setError('Failed to create assignment');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [username, description, score, date, BASE_URL, navigate]);
 
-    return (
-      <div>
-        <h3>Create New Assignments Log</h3>
-        <form onSubmit={this.onSubmit}>
-          <div className="form-group">
-            <label>Username: </label>
-            <select
-              required
-              className="form-control"
-              value={username}
-              onChange={this.onChangeUsername}
-            >
-              {users.map((user) => (
-                <option key={user} value={user}>{user}</option>
-              ))}
-            </select>
+  return (
+    <div>
+      <h3>Create New Assignments Log</h3>
+      {error && <div className="alert alert-danger" role="alert">{error}</div>}
+      <form onSubmit={onSubmit}>
+        <div className="form-group">
+          <label>Username: </label>
+          <select
+            required
+            className="form-control"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={submitting}
+          >
+            {users.map(user => (
+              <option key={user} value={user}>{user}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label>Description: </label>
+          <input
+            type="text"
+            required
+            className="form-control"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={submitting}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Score: </label>
+          <input
+            type="number"
+            className="form-control"
+            value={score}
+            onChange={(e) => setScore(e.target.value)}
+            disabled={submitting}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Date: </label>
+          <div>
+            <DatePicker selected={date} onChange={(d) => d && setDate(d)} />
           </div>
+        </div>
 
-          <div className="form-group">
-            <label>Description: </label>
-            <input
-              type="text"
-              required
-              className="form-control"
-              value={description}
-              onChange={this.onChangeDescription}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>
-              Score:{' '}
-            </label>
-            <input
-              type="text"
-              className="form-control"
-              value={score}
-              onChange={this.onChangeScore}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Date: </label>
-            <div>
-              <DatePicker selected={date} onChange={this.onChangeDate} />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <input type="submit" value="Create Assignments Log" className="btn btn-primary" />
-          </div>
-        </form>
-      </div>
-    );
-  }
+        <div className="form-group">
+          <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting ? 'Saving...' : 'Create Assignments Log'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }
