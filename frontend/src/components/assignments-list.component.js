@@ -1,28 +1,35 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
-const AssignmentRow = ({ assignment, onDelete }) => (
+const AssignmentRow = ({ assignment, onDelete, canManage }) => (
   <tr>
     <td>{assignment.username}</td>
     <td>{assignment.description}</td>
     <td>{assignment.score}</td>
     <td>{assignment.date?.substring(0, 10)}</td>
     <td>
-      <Link to={`/edit/${assignment.id}`}>edit</Link>{' '}
-      |{' '}
-      <button
-        type="button"
-        className="btn btn-link p-0 align-baseline"
-        onClick={() => onDelete(assignment.id)}
-      >
-        delete
-      </button>
+      {canManage ? (
+        <>
+          <Link to={`/edit/${assignment.id}`}>edit</Link>{' '}|{' '}
+          <button
+            type="button"
+            className="btn btn-link p-0 align-baseline"
+            onClick={() => onDelete(assignment.id)}
+          >
+            delete
+          </button>
+        </>
+      ) : (
+        <span className="text-muted">—</span>
+      )}
     </td>
   </tr>
 );
 
 export default function AssignmentsList() {
+  const { isStudent, isInstructor, username: studentUsername } = useAuth();
   const BASE_URL = useMemo(() => process.env.REACT_APP_API_URL ?? 'http://localhost:5000', []);
 
   const [assignments, setAssignments] = useState([]);
@@ -42,6 +49,7 @@ export default function AssignmentsList() {
   }, [BASE_URL]);
 
   const fetchUsers = useCallback(async () => {
+    if (isStudent) return; // students don't need user list
     try {
       const { data } = await axios.get(`${BASE_URL}/users`);
       setUsers(data);
@@ -52,15 +60,19 @@ export default function AssignmentsList() {
       console.error(err);
       setError('Failed to load users');
     }
-  }, [BASE_URL]);
+  }, [BASE_URL, isStudent]);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([fetchUsers(), fetchAssignments()]);
+      await Promise.all([fetchAssignments(), fetchUsers()]);
+      // if student, lock selectedUser to their username
+      if (isStudent && studentUsername) {
+        setSelectedUser(studentUsername);
+      }
       setLoading(false);
     })();
-  }, [fetchUsers, fetchAssignments]);
+  }, [fetchAssignments, fetchUsers, isStudent, studentUsername]);
 
   const deleteAssignment = useCallback(async (id) => {
     try {
@@ -72,7 +84,8 @@ export default function AssignmentsList() {
     }
   }, [BASE_URL]);
 
-  const filteredAssignments = assignments.filter(a => !selectedUser || a.username === selectedUser);
+  const effectiveUser = isStudent ? studentUsername : selectedUser;
+  const filteredAssignments = assignments.filter(a => !effectiveUser || a.username === effectiveUser);
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="alert alert-danger" role="alert">{error}</div>;
@@ -80,21 +93,26 @@ export default function AssignmentsList() {
   return (
     <div>
       <h3>Logged Assignments</h3>
-      <div className="form-group">
-        <label>Filter by user: </label>
-        <select
-          required
-          className="form-control"
-          value={selectedUser}
-          onChange={(e) => setSelectedUser(e.target.value)}
-        >
-          {users.map(user => (
-            <option key={user._id || user.id || user.username} value={user.username}>
-              {user.username}
-            </option>
-          ))}
-        </select>
-      </div>
+      {isInstructor && (
+        <div className="form-group">
+          <label>Filter by user: </label>
+          <select
+            required
+            className="form-control"
+            value={selectedUser}
+            onChange={(e) => setSelectedUser(e.target.value)}
+          >
+            {users.map(user => (
+              <option key={user._id || user.id || user.username} value={user.username}>
+                {user.username}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {isStudent && (
+        <div className="mb-2 text-muted small">Viewing assignments for {studentUsername}</div>
+      )}
       <table className="table">
         <thead className="thead-light">
           <tr>
@@ -107,12 +125,12 @@ export default function AssignmentsList() {
         </thead>
         <tbody>
           {filteredAssignments.map(a => (
-            <AssignmentRow key={a.id} assignment={a} onDelete={deleteAssignment} />
+            <AssignmentRow key={a.id} assignment={a} onDelete={deleteAssignment} canManage={isInstructor} />
           ))}
           {filteredAssignments.length === 0 && (
             <tr>
               <td colSpan={5} className="text-center text-muted">
-                No assignments for selected user
+                No assignments
               </td>
             </tr>
           )}

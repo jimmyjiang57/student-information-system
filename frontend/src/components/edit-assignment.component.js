@@ -3,10 +3,12 @@ import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function EditAssignment() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isStudent, username: studentUsername, isInstructor } = useAuth();
 
   const BASE_URL = useMemo(
     () => process.env.REACT_APP_API_URL ?? 'http://localhost:5000',
@@ -27,23 +29,27 @@ export default function EditAssignment() {
 
     async function load() {
       try {
-        const [assignmentRes, usersRes] = await Promise.all([
-          axios.get(`${BASE_URL}/assignments/${id}`),
-          axios.get(`${BASE_URL}/users`),
-        ]);
-
-        if (cancelled) return;
-
+        const assignmentRes = await axios.get(`${BASE_URL}/assignments/${id}`);
         const a = assignmentRes.data ?? {};
-        setUsername(a.username ?? '');
+
+        // If student tries to edit an assignment not theirs, redirect.
+        if (isStudent && a.username && a.username !== studentUsername) {
+          navigate('/assignments', { replace: true });
+          return;
+        }
+
+        setUsername(a.username ?? (isStudent ? studentUsername : ''));
         setDescription(a.description ?? '');
         setScore(Number(a.score ?? 0));
         setDate(a.date ? new Date(a.date) : new Date());
 
-        const names = (usersRes.data ?? [])
-          .map(u => u.username)
-          .filter(Boolean);
-        setUsers(names);
+        if (!isStudent) {
+          const usersRes = await axios.get(`${BASE_URL}/users`);
+          const names = (usersRes.data ?? [])
+            .map(u => u.username)
+            .filter(Boolean);
+          if (!cancelled) setUsers(names);
+        }
       } catch (e) {
         console.error(e);
         setErrMsg('Failed to load assignment or users.');
@@ -54,20 +60,20 @@ export default function EditAssignment() {
 
     load();
     return () => { cancelled = true; };
-  }, [BASE_URL, id]);
+  }, [BASE_URL, id, isStudent, studentUsername, navigate]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     try {
       const payload = {
-        username,
+        username: isStudent ? studentUsername : username,
         description,
         score: Number(score) || 0,
         date: date instanceof Date ? date.toISOString() : date,
       };
       const res = await axios.put(`${BASE_URL}/assignments/${id}`, payload);
       console.log(res.data);
-      navigate('/');
+      navigate('/assignments');
     } catch (err) {
       console.error(err?.response?.data || err.message);
       setErrMsg(err?.response?.data || 'Update failed');
@@ -79,7 +85,7 @@ export default function EditAssignment() {
 
   return (
     <div>
-      <h3>Edit Assignments Log</h3>
+      <h3>Edit Assignment{isStudent && ' (Your Own)'}</h3>
 
       {errMsg && (
         <div className="alert alert-danger" role="alert" style={{ marginBottom: 16 }}>
@@ -90,16 +96,20 @@ export default function EditAssignment() {
       <form onSubmit={onSubmit}>
         <div className="form-group">
           <label>Username: </label>
-          <select
-            required
-            className="form-control"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          >
-            {users.map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
-          </select>
+          {isStudent ? (
+            <input type="text" className="form-control" value={studentUsername || ''} disabled />
+          ) : (
+            <select
+              required
+              className="form-control"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            >
+              {users.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="form-group">
@@ -134,9 +144,10 @@ export default function EditAssignment() {
         </div>
 
         <div className="form-group">
-          <input type="submit" value="Edit Assignments Log" className="btn btn-primary" />
+          <input type="submit" value="Save Changes" className="btn btn-primary" />
         </div>
       </form>
+      {isInstructor && <p className="text-muted small mb-0">Instructors may reassign by changing username.</p>}
     </div>
   );
 }
