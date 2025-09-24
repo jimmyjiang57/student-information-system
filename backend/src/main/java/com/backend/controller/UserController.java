@@ -1,58 +1,49 @@
 package com.backend.controller;
 
 import com.backend.model.User;
-import com.backend.model.Assignment;
-import com.backend.repository.UserRepository;
-import com.backend.repository.AssignmentRepository;
+import com.backend.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/users")
 @CrossOrigin(origins = "http://localhost:3000")
 public class UserController {
 
-	private final UserRepository userRepository;
-	private final AssignmentRepository assignmentRepository;
+	private final UserService userService;
 
-	public UserController(UserRepository userRepository, AssignmentRepository assignmentRepository) {
-		this.userRepository = userRepository;
-		this.assignmentRepository = assignmentRepository;
+	public UserController(UserService userService) {
+		this.userService = userService;
 	}
 
-	// GET /api/users
+	// GET /users
 	@GetMapping
 	public List<User> getAll() {
-		return userRepository.findAll();
+		return userService.getAllUsers();
 	}
 
-	// POST /api/users/add
+	// POST /users/add
 	@PostMapping("/add")
 	public ResponseEntity<User> addUser(@RequestBody User body) {
-		if (body.getUsername() == null || body.getUsername().length() < 3) {
-			return ResponseEntity.badRequest().body(null);
+		Optional<User> created = userService.createUser(body);
+		if (created.isEmpty()) {
+			return ResponseEntity.badRequest().build();
 		}
-		body.setId(null);
-		User saved = userRepository.save(body);
-	    return ResponseEntity.created(URI.create("/users/" + saved.getId())).body(saved);
+		User saved = created.get();
+		return ResponseEntity.created(URI.create("/users/" + saved.getId())).body(saved);
 	}
 
-	// DELETE /api/users/{id}
+	// DELETE /users/{id}
 	@DeleteMapping("/{id}")
 	public ResponseEntity<String> deleteUser(@PathVariable Long id) {
-		return userRepository.findById(id)
-				.map(user -> {
-					// Delete all assignments with this username
-					List<Assignment> assignments = assignmentRepository.findAll();
-					assignments.stream()
-						.filter(a -> a.getUsername().equals(user.getUsername()))
-						.forEach(a -> assignmentRepository.deleteById(a.getId()));
-					userRepository.deleteById(id);
-					return ResponseEntity.ok("User and their assignments deleted.");
-				})
-				.orElse(ResponseEntity.status(404).body("User not found."));
+		boolean deleted = userService.deleteUserById(id);
+		if (!deleted) {
+			return ResponseEntity.status(404).body("User not found.");
+		}
+		return ResponseEntity.ok("User and their assignments deleted.");
 	}
 }
