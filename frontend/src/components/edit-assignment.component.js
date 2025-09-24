@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 export default function EditAssignment() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isStudent, username: studentUsername, isInstructor } = useAuth();
+  const { isStudent, username: studentUsername } = useAuth();
 
   const BASE_URL = useMemo(
     () => process.env.REACT_APP_API_URL ?? 'http://localhost:5000',
