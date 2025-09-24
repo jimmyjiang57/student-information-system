@@ -25,7 +25,6 @@ export default function EditAssignment() {
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState(null);
 
-  // load assignment + users
   useEffect(() => {
     let cancelled = false;
 
@@ -34,7 +33,6 @@ export default function EditAssignment() {
         const assignmentRes = await axios.get(`${BASE_URL}/assignments/${id}`);
         const a = assignmentRes.data ?? {};
 
-        // If student tries to edit an assignment not theirs, redirect.
         if (isStudent && a.username && a.username !== studentUsername) {
           navigate('/assignments', { replace: true });
           return;
@@ -53,7 +51,6 @@ export default function EditAssignment() {
             .filter(Boolean);
           if (!cancelled) setUsers(names);
         }
-        // load courses (optional)
         try {
           const coursesRes = await axios.get(`${BASE_URL}/courses`);
           if (!cancelled) setCourses(coursesRes.data ?? []);
@@ -172,7 +169,6 @@ export default function EditAssignment() {
           <input type="submit" value="Save Changes" className="btn btn-primary" />
         </div>
       </form>
-  {isInstructor && <p className="text-muted small mb-0">Instructors may reassign by changing username or course.</p>}
     </div>
   );
 }

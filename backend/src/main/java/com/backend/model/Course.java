@@ -11,7 +11,7 @@ public class Course {
     private Long id;
 
     @Column(unique = true, nullable = false, length = 100)
-    private String code; // e.g. CS101
+    private String code;
 
     @Column(nullable = false, length = 255)
     private String title;

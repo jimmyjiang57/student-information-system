@@ -47,7 +47,6 @@ public class UserService {
             return false;
         }
         User user = userOpt.get();
-        // Delete all assignments belonging to this username
         assignmentRepository.deleteByUsername(user.getUsername());
         userRepository.deleteById(id);
         return true;

@@ -52,7 +52,7 @@ export default function AssignmentsList() {
   }, [BASE_URL]);
 
   const fetchUsers = useCallback(async () => {
-    if (isStudent) return; // students don't need user list
+    if (isStudent) return;
     try {
       const { data } = await axios.get(`${BASE_URL}/users`);
       setUsers(data);
@@ -78,7 +78,6 @@ export default function AssignmentsList() {
     (async () => {
       setLoading(true);
       await Promise.all([fetchAssignments(), fetchUsers(), fetchCourses()]);
-      // if student, lock selectedUser to their username
       if (isStudent && studentUsername) {
         setSelectedUser(studentUsername);
       }
@@ -137,9 +136,7 @@ export default function AssignmentsList() {
           ))}
         </select>
       </div>
-      {isStudent && (
-        <div className="mb-2 text-muted small">Viewing assignments for {studentUsername}</div>
-      )}
+      
       <table className="table">
         <thead className="thead-light">
           <tr>

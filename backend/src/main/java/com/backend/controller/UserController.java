@@ -20,13 +20,11 @@ public class UserController {
 		this.userService = userService;
 	}
 
-	// GET /users
 	@GetMapping
 	public List<User> getAll() {
 		return userService.getAllUsers();
 	}
 
-	// POST /users/add
 	@PostMapping("/add")
 	public ResponseEntity<User> addUser(@RequestBody User body) {
 		Optional<User> created = userService.createUser(body);
@@ -37,7 +35,6 @@ public class UserController {
 		return ResponseEntity.created(URI.create("/users/" + saved.getId())).body(saved);
 	}
 
-	// DELETE /users/{id}
 	@DeleteMapping("/{id}")
 	public ResponseEntity<String> deleteUser(@PathVariable Long id) {
 		boolean deleted = userService.deleteUserById(id);

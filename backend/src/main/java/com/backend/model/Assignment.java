@@ -22,7 +22,6 @@ public class Assignment {
     private int score;
     @Temporal(TemporalType.DATE)
     private Date date;
-    // Optional course linkage by code (simple string reference)
     private String courseCode;
 
     @Temporal(TemporalType.TIMESTAMP)

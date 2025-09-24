@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [role, setRole] = useState(null); // null means not logged in
+  const [role, setRole] = useState(null);
   const [username, setUsername] = useState(null);
   const [loading, setLoading] = useState(true);
 
