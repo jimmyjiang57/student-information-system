@@ -92,7 +92,7 @@ export default function AssignmentsList() {
 
   return (
     <div>
-      <h3>Logged Assignments</h3>
+      <h3>Assignments</h3>
       {isInstructor && (
         <div className="form-group">
           <label>Filter by user: </label>

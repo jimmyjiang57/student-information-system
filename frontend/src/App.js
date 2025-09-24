@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -12,27 +12,39 @@ import Login from './components/login.component';
 import { AuthProvider } from './context/AuthContext';
 import { RequireAuth, InstructorOnly } from './components/route-guards';
 
+function PageWrapperLayout() {
+  return (
+    <div className="container page-wrapper">
+      <br />
+      <Outlet />
+    </div>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Navbar />
-        <div className="container page-wrapper">
-          <br />
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route element={<RequireAuth />}> {/* protected authenticated routes */}
+        <Routes>
+          <Route path="/" element={<Login />} />
+
+          {/* Protected routes are wrapped once via layout route */}
+          <Route element={<RequireAuth />}> {/* protected authenticated routes */}
+            <Route element={<PageWrapperLayout />}> {/* adds bordered container only here */}
               <Route path="/assignments" element={<AssignmentsList />} />
-              <Route element={<InstructorOnly />}> {/* instructor-only */}
+              <Route element={<InstructorOnly />}>
                 <Route path="/edit/:id" element={<EditAssignment />} />
                 <Route path="/create" element={<CreateAssignment />} />
                 <Route path="/user" element={<CreateUser />} />
               </Route>
-              {/* student has no access to instructor-only paths */}
             </Route>
+          </Route>
+          
+          <Route element={<PageWrapperLayout />}>
             <Route path="*" element={<div>Not Found</div>} />
-          </Routes>
-        </div>
+          </Route>
+        </Routes>
       </Router>
     </AuthProvider>
   );
