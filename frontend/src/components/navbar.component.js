@@ -18,16 +18,19 @@ export default function Navbar() {
         <div className="collapse navbar-collapse show">
           {role && (
             <ul className="navbar-nav mr-auto">
-              <li className="nav-item">
-                <NavLink to="/assignments" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>Assignments</NavLink>
-              </li>
               {isInstructor && (
                 <>
+                  <li className="nav-item">
+                    <NavLink to="/assignments" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>Assignments</NavLink>
+                  </li>
                   <li className="nav-item">
                     <NavLink to="/create" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>Add Assignment</NavLink>
                   </li>
                   <li className="nav-item">
                     <NavLink to="/user" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>Manage Students</NavLink>
+                  </li>
+                  <li className="nav-item">
+                    <NavLink to="/courses" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>Courses</NavLink>
                   </li>
                 </>
               )}

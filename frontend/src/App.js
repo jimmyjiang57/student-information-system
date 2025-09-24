@@ -7,6 +7,8 @@ import Navbar from './components/navbar.component';
 import AssignmentsList from './components/assignments-list.component';
 import EditAssignment from './components/edit-assignment.component';
 import CreateAssignment from './components/create-assignment.component';
+import CoursesList from './components/courses-list.component';
+import CreateCourse from './components/create-course.component';
 import CreateUser from './components/create-user.component';
 import Login from './components/login.component';
 import { AuthProvider } from './context/AuthContext';
@@ -37,10 +39,12 @@ function App() {
                 <Route path="/edit/:id" element={<EditAssignment />} />
                 <Route path="/create" element={<CreateAssignment />} />
                 <Route path="/user" element={<CreateUser />} />
+                <Route path="/courses" element={<CoursesList />} />
+                <Route path="/courses/new" element={<CreateCourse />} />
               </Route>
             </Route>
           </Route>
-          
+
           <Route element={<PageWrapperLayout />}>
             <Route path="*" element={<div>Not Found</div>} />
           </Route>

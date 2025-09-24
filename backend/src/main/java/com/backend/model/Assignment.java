@@ -22,6 +22,8 @@ public class Assignment {
     private int score;
     @Temporal(TemporalType.DATE)
     private Date date;
+    // Optional course linkage by code (simple string reference)
+    private String courseCode;
 
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdAt;
@@ -85,4 +87,7 @@ public class Assignment {
     public Date getUpdatedAt() {
         return updatedAt;
     }
+
+    public String getCourseCode() { return courseCode; }
+    public void setCourseCode(String courseCode) { this.courseCode = courseCode; }
 }

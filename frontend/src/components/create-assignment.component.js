@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function CreateAssignment() {
   const navigate = useNavigate();
-  const { isStudent, username: studentUsername, isInstructor } = useAuth();
+  const { isStudent, username: studentUsername } = useAuth();
   const BASE_URL = useMemo(() => process.env.REACT_APP_API_URL ?? 'http://localhost:5000', []);
 
   const [username, setUsername] = useState('');
@@ -15,6 +15,8 @@ export default function CreateAssignment() {
   const [score, setScore] = useState('');
   const [date, setDate] = useState(new Date());
   const [users, setUsers] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [courseCode, setCourseCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -24,12 +26,18 @@ export default function CreateAssignment() {
       try {
         if (isStudent) {
           setUsername(studentUsername || '');
-          return;
+        } else {
+          const { data } = await axios.get(`${BASE_URL}/users`);
+          if (!cancelled && data.length > 0) {
+            setUsers(data.map(u => u.username));
+            setUsername(data[0].username);
+          }
         }
-        const { data } = await axios.get(`${BASE_URL}/users`);
-        if (!cancelled && data.length > 0) {
-          setUsers(data.map(u => u.username));
-          setUsername(data[0].username);
+        try {
+          const coursesRes = await axios.get(`${BASE_URL}/courses`);
+          if (!cancelled) setCourses(coursesRes.data ?? []);
+        } catch (e) {
+          console.warn('Failed to load courses (optional)', e);
         }
       } catch (err) {
         if (!cancelled) setError('Failed to load users');
@@ -49,6 +57,7 @@ export default function CreateAssignment() {
         description,
         score: Number(score) || 0,
         date,
+        courseCode: courseCode || null,
       };
       await axios.post(`${BASE_URL}/assignments/add`, assignment);
       navigate('/assignments');
@@ -58,11 +67,11 @@ export default function CreateAssignment() {
     } finally {
       setSubmitting(false);
     }
-  }, [username, description, score, date, BASE_URL, navigate, isStudent, studentUsername]);
+  }, [username, description, score, date, courseCode, BASE_URL, navigate, isStudent, studentUsername]);
 
   return (
     <div>
-      <h3>Create New Assignment</h3>
+      <h3>Add New Assignment</h3>
       {error && <div className="alert alert-danger" role="alert">{error}</div>}
       <form onSubmit={onSubmit}>
         <div className="form-group">
@@ -82,6 +91,21 @@ export default function CreateAssignment() {
               ))}
             </select>
           )}
+        </div>
+
+        <div className="form-group">
+          <label>Course: </label>
+          <select
+            className="form-control"
+            value={courseCode}
+            onChange={(e) => setCourseCode(e.target.value)}
+            disabled={submitting}
+          >
+            <option value="">(none)</option>
+            {courses.map(c => (
+              <option key={c.id || c.code} value={c.code}>{c.code} — {c.title}</option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">
@@ -120,8 +144,6 @@ export default function CreateAssignment() {
           </button>
         </div>
       </form>
-      {isInstructor && <p className="text-muted small mb-0">Instructors can assign work to any user.</p>}
-      {isStudent && <p className="text-muted small mb-0">This will be logged for your account only.</p>}
     </div>
   );
 }

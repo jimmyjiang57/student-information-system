@@ -55,7 +55,7 @@ export default function CreateUser() {
 
   return (
     <div>
-      <h3>Create New User</h3>
+      <h3>Add New Student</h3>
       {error && <div className="alert alert-danger" role="alert">{error}</div>}
       <form onSubmit={onSubmit}>
         <div className="form-group">
@@ -77,7 +77,7 @@ export default function CreateUser() {
       </form>
 
       <div className="mt-4">
-        <h3>Users List</h3>
+        <h3>Students List</h3>
         {loading ? (
           <div>Loading users...</div>
         ) : (

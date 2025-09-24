@@ -20,6 +20,8 @@ export default function EditAssignment() {
   const [description, setDescription] = useState('');
   const [score, setScore] = useState(0);
   const [date, setDate] = useState(new Date());
+  const [courses, setCourses] = useState([]);
+  const [courseCode, setCourseCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState(null);
 
@@ -42,6 +44,7 @@ export default function EditAssignment() {
         setDescription(a.description ?? '');
         setScore(Number(a.score ?? 0));
         setDate(a.date ? new Date(a.date) : new Date());
+        setCourseCode(a.courseCode || '');
 
         if (!isStudent) {
           const usersRes = await axios.get(`${BASE_URL}/users`);
@@ -49,6 +52,13 @@ export default function EditAssignment() {
             .map(u => u.username)
             .filter(Boolean);
           if (!cancelled) setUsers(names);
+        }
+        // load courses (optional)
+        try {
+          const coursesRes = await axios.get(`${BASE_URL}/courses`);
+          if (!cancelled) setCourses(coursesRes.data ?? []);
+        } catch (ce) {
+          console.warn('Failed to load courses', ce);
         }
       } catch (e) {
         console.error(e);
@@ -70,6 +80,7 @@ export default function EditAssignment() {
         description,
         score: Number(score) || 0,
         date: date instanceof Date ? date.toISOString() : date,
+        courseCode: courseCode || null,
       };
       const res = await axios.put(`${BASE_URL}/assignments/${id}`, payload);
       console.log(res.data);
@@ -144,10 +155,24 @@ export default function EditAssignment() {
         </div>
 
         <div className="form-group">
+          <label>Course (optional): </label>
+          <select
+            className="form-control"
+            value={courseCode}
+            onChange={(e) => setCourseCode(e.target.value)}
+          >
+            <option value="">(none)</option>
+            {courses.map(c => (
+              <option key={c.id} value={c.code}>{c.code} — {c.title}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
           <input type="submit" value="Save Changes" className="btn btn-primary" />
         </div>
       </form>
-      {isInstructor && <p className="text-muted small mb-0">Instructors may reassign by changing username.</p>}
+  {isInstructor && <p className="text-muted small mb-0">Instructors may reassign by changing username or course.</p>}
     </div>
   );
 }
